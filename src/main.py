@@ -2,7 +2,7 @@
 Main entry point. Run every 5 minutes by GitHub Actions.
 
 For each timeframe:
-  1. Fetch fresh candles from Oanda
+  1. Fetch fresh candles from Yahoo Finance (Gold Futures, free, no signup)
   2. Run the relevant signal checks (CAB on all TFs, No Demand/No Supply on H4 only)
   3. Skip anything already alerted (tracked in state.json)
   4. For new signals: generate a chart image + send notification
@@ -13,13 +13,13 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from oanda_client import get_candles
+from market_data import get_candles
 from vsa_signals import check_cab, check_no_demand_no_supply
 from chart_gen import generate_chart
 from notifier import notify
 from state_manager import already_alerted, load_state, mark_alerted, save_state
 
-INSTRUMENT = "XAU_USD"
+SYMBOL_LABEL = "GOLD (COMEX Futures - GC=F)"
 CAB_TIMEFRAMES = ["M3", "M5", "M15", "H1", "H4"]
 NO_DEMAND_SUPPLY_TIMEFRAMES = ["H4"]
 
@@ -37,7 +37,7 @@ def process_timeframe(granularity, state):
     do_ndns = granularity in NO_DEMAND_SUPPLY_TIMEFRAMES
 
     try:
-        candles = get_candles(INSTRUMENT, granularity, count=60)
+        candles = get_candles(granularity, count=60)
     except Exception as e:
         print(f"[{granularity}] failed to fetch candles: {e}")
         return
@@ -63,7 +63,7 @@ def process_timeframe(granularity, state):
 
         safe_time = candle_time.replace(":", "-")
         chart_path = f"/tmp/signal_{granularity}_{safe_time}.png"
-        title = f"XAUUSD {granularity} - {sig_type}"
+        title = f"GOLD (GC) {granularity} - {sig_type}"
         try:
             generate_chart(candles, candle_time, title, chart_path)
         except Exception as e:
@@ -71,7 +71,7 @@ def process_timeframe(granularity, state):
             chart_path = None
 
         message = (
-            f"Symbol: XAUUSD\n"
+            f"Symbol: {SYMBOL_LABEL}\n"
             f"Timeframe: {granularity}\n"
             f"Candle: {to_pkt_str(candle_time)}\n"
             f"Signal: {sig_type}\n"
