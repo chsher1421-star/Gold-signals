@@ -25,8 +25,6 @@ jobs:
 
       - name: Run signal check
         env:
-          OANDA_TOKEN: ${{ secrets.OANDA_TOKEN }}
-          OANDA_ENV: practice
           NOTIFY_METHOD: ntfy
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
