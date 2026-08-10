@@ -24,12 +24,48 @@ CAB_TIMEFRAMES = ["M3", "M5", "M15", "H1", "H4"]
 NO_DEMAND_SUPPLY_TIMEFRAMES = ["H4"]
 
 PKT_OFFSET = timedelta(hours=5)  # Pakistan Standard Time = UTC+5, no DST
+SUMMARY_HOUR_PKT = 23  # 11 PM PKT - daily "system is alive" summary
 
 
 def to_pkt_str(utc_time_str):
     dt = datetime.fromisoformat(utc_time_str.replace("Z", "+00:00"))
     pkt = dt.replace(tzinfo=None) + PKT_OFFSET
     return pkt.strftime("%Y-%m-%d %H:%M") + " PKT"
+
+
+def get_pkt_now():
+    return datetime.utcnow() + PKT_OFFSET
+
+
+def ensure_daily_stats(state):
+    today_str = get_pkt_now().strftime("%Y-%m-%d")
+    stats = state.get("daily_stats")
+    if not stats or stats.get("date") != today_str:
+        stats = {"date": today_str, "checks": 0, "signals": 0, "summary_sent": False}
+        state["daily_stats"] = stats
+    return stats
+
+
+def record_check(state):
+    ensure_daily_stats(state)["checks"] += 1
+
+
+def record_signal(state):
+    ensure_daily_stats(state)["signals"] += 1
+
+
+def maybe_send_daily_summary(state):
+    stats = ensure_daily_stats(state)
+    now = get_pkt_now()
+    if now.hour == SUMMARY_HOUR_PKT and not stats.get("summary_sent"):
+        message = (
+            f"Date: {stats['date']}\n"
+            f"Checks run today: {stats['checks']}\n"
+            f"Signals found today: {stats['signals']}\n\n"
+            f"System is running normally."
+        )
+        notify("Gold VSA - Daily Summary", message)
+        stats["summary_sent"] = True
 
 
 def process_timeframe(granularity, state):
@@ -79,13 +115,16 @@ def process_timeframe(granularity, state):
         )
         notify(f"Gold Signal: {sig_type} [{granularity}]", message, chart_path)
         mark_alerted(state, granularity, sig_type, candle_time)
+        record_signal(state)
 
 
 def main():
     state = load_state()
+    record_check(state)
     all_timeframes = sorted(set(CAB_TIMEFRAMES + NO_DEMAND_SUPPLY_TIMEFRAMES))
     for tf in all_timeframes:
         process_timeframe(tf, state)
+    maybe_send_daily_summary(state)
     save_state(state)
 
 
