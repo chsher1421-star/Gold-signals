@@ -29,8 +29,8 @@
   ],
   "daily_stats": {
     "date": "2026-08-12",
-    "checks": 46,
-    "signals": 11,
+    "checks": 47,
+    "signals": 12,
     "summary_sent": false
   },
   "M3:CAB (10-bar/15-bar vol, narrow spread)": [
@@ -207,5 +207,8 @@
   ],
   "M5:CAB (10-bar/15-bar vol, narrow spread)": [
     "2026-08-11T22:15:00Z"
+  ],
+  "M3:CAB (15-bar vol, wide spread)": [
+    "2026-08-11T22:33:00Z"
   ]
 }
