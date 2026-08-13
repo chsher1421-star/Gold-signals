@@ -49,10 +49,10 @@
     "2026-08-13T14:00:00Z"
   ],
   "daily_stats": {
-    "date": "2026-08-13",
-    "checks": 291,
-    "signals": 108,
-    "summary_sent": true
+    "date": "2026-08-14",
+    "checks": 1,
+    "signals": 0,
+    "summary_sent": false
   },
   "M3:CAB (10-bar/15-bar vol, narrow spread)": [
     "2026-08-10T11:09:00Z",
