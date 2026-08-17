@@ -674,51 +674,62 @@ def _fetch_all_timeframes():
     # --------------------------------------------------------
 
     def request_trendbars():
-        now_ms = int(
-            time.time() * 1000
+    """
+    Request completed trendbars for every configured timeframe.
+
+    cTrader requires both fromTimestamp and toTimestamp
+    in ProtoOAGetTrendbarsReq.
+    """
+    now_ms = int(
+        time.time() * 1000
+    )
+
+    for tf, tf_minutes in TF_MINUTES.items():
+        request = (
+            ProtoOAGetTrendbarsReq()
         )
 
-        for tf in TF_MINUTES:
-            request = (
-                ProtoOAGetTrendbarsReq()
+        request.ctidTraderAccountId = (
+            ACCOUNT_ID
+        )
+
+        request.symbolId = (
+            symbol_info["symbol_id"]
+        )
+
+        request.period = (
+            ProtoOATrendbarPeriod.Value(
+                tf
             )
+        )
 
-            request.ctidTraderAccountId = (
-                ACCOUNT_ID
+        request.count = 60
+
+        history_minutes = (
+            (request.count + 5)
+            * tf_minutes
+        )
+
+        request.fromTimestamp = (
+            now_ms
+            - (
+                history_minutes
+                * 60
+                * 1000
             )
+        )
 
-            request.symbolId = (
-                symbol_info["symbol_id"]
-            )
+        request.toTimestamp = now_ms
 
-            request.period = (
-                ProtoOATrendbarPeriod.Value(
-                    tf
-                )
-            )
-
-            request.count = 60
-
-            request.toTimestamp = (
-                now_ms
-            )
-
-            send(
-                request,
-                lambda response, tf=tf:
-                    after_trendbars(
-                        tf,
-                        response,
-                    ),
-                (
-                    "ProtoOAGetTrendbarsReq"
-                    f"[{tf}]"
+        send(
+            request,
+            lambda response, tf=tf:
+                after_trendbars(
+                    tf,
+                    response,
                 ),
-            )
-
-    # --------------------------------------------------------
-    # SYMBOL DETAILS
-    # --------------------------------------------------------
+            f"ProtoOAGetTrendbarsReq[{tf}]",
+        )
 
     def after_symbol_details(
         response,
