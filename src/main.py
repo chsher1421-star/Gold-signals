@@ -19,7 +19,7 @@ from chart_gen import generate_chart
 from notifier import notify
 from state_manager import already_alerted, load_state, mark_alerted, save_state
 
-SYMBOL_LABEL = "GOLD (COMEX Futures - GC=F)"
+SYMBOL_LABEL = "GOLD (Pepperstone cTrader XAUUSD)"
 CAB_TIMEFRAMES = ["M3", "M5", "M15", "H1", "H4"]
 NO_DEMAND_SUPPLY_TIMEFRAMES = ["H4"]
 
