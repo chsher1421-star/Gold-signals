@@ -236,9 +236,9 @@ def _fetch_all_timeframes() -> dict[str, list[dict[str, Any]]]:
             response = Protobuf.extract(message)
             return callback(response)
 
-    deferred.addCallback(handle_response)
-    deferred.addErrback(fail)
-    return deferred
+        deferred.addCallback(handle_response)
+        deferred.addErrback(fail)
+        return deferred
 
     def finish_if_done():
         if not pending and reactor.running:
