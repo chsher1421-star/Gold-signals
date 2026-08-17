@@ -1,9 +1,11 @@
 name: Gold VSA Alerts
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch: {}   # lets you manually trigger a run from the Actions tab, for testing
+  workflow_dispatch: {}
+
+concurrency:
+  group: gold-vsa-alerts
+  cancel-in-progress: false   # lets you manually trigger a run from the Actions tab, for testing
 
 permissions:
   contents: write   # needed so the workflow can commit the updated state.json back
