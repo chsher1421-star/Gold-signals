@@ -22,7 +22,7 @@ import requests
 from nacl import encoding, public
 from twisted.internet import reactor
 
-from ctrader_open_api import Client, EndPoints, TcpProtocol
+from ctrader_open_api import Client, Protobuf, EndPoints, TcpProtocol
 from ctrader_open_api.messages.OpenApiCommonMessages_pb2 import *
 from ctrader_open_api.messages.OpenApiMessages_pb2 import *
 from ctrader_open_api.messages.OpenApiModelMessages_pb2 import *
@@ -230,10 +230,15 @@ def _fetch_all_timeframes() -> dict[str, list[dict[str, Any]]]:
             reactor.stop()
 
     def send(request, callback):
-        deferred = client.send(request)
-        deferred.addCallback(callback)
-        deferred.addErrback(fail)
-        return deferred
+    deferred = client.send(request)
+
+    def handle_response(message):
+        response = Protobuf.extract(message)
+        return callback(response)
+
+    deferred.addCallback(handle_response)
+    deferred.addErrback(fail)
+    return deferred
 
     def finish_if_done():
         if not pending and reactor.running:
