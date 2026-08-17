@@ -23,7 +23,13 @@ import requests
 from nacl import encoding, public
 from twisted.internet import reactor
 
-from ctrader_open_api import Client, Protobuf, EndPoints, TcpProtocol
+from ctrader_open_api import (
+    Client,
+    Protobuf,
+    EndPoints,
+    TcpProtocol,
+)
+
 from ctrader_open_api.messages.OpenApiMessages_pb2 import (
     ProtoOAAccountAuthReq,
     ProtoOAApplicationAuthReq,
@@ -32,6 +38,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (
     ProtoOASymbolByIdReq,
     ProtoOASymbolsListReq,
 )
+
 from ctrader_open_api.messages.OpenApiModelMessages_pb2 import (
     ProtoOATrendbarPeriod,
 )
@@ -41,32 +48,62 @@ from ctrader_open_api.messages.OpenApiModelMessages_pb2 import (
 # CONFIGURATION
 # ============================================================
 
-SYMBOL_NAME = os.environ.get("CTRADER_SYMBOL_NAME", "XAUUSD")
-ACCOUNT_ID = int(os.environ["CTRADER_ACCOUNT_ID"])
-ENVIRONMENT = os.environ.get("CTRADER_ENVIRONMENT", "demo").lower()
-
-CLIENT_ID = os.environ["CTRADER_CLIENT_ID"]
-CLIENT_SECRET = os.environ["CTRADER_CLIENT_SECRET"]
-
-ACCESS_TOKEN = os.environ["CTRADER_ACCESS_TOKEN"]
-REFRESH_TOKEN = os.environ["CTRADER_REFRESH_TOKEN"]
-
-TOKEN_EXPIRES_AT = int(
-    os.environ.get("CTRADER_TOKEN_EXPIRES_AT", "0")
+SYMBOL_NAME = os.environ.get(
+    "CTRADER_SYMBOL_NAME",
+    "XAUUSD",
 )
 
-GITHUB_PAT = os.environ.get("GITHUB_PAT", "")
+ACCOUNT_ID = int(
+    os.environ["CTRADER_ACCOUNT_ID"]
+)
+
+ENVIRONMENT = os.environ.get(
+    "CTRADER_ENVIRONMENT",
+    "demo",
+).lower()
+
+CLIENT_ID = os.environ[
+    "CTRADER_CLIENT_ID"
+]
+
+CLIENT_SECRET = os.environ[
+    "CTRADER_CLIENT_SECRET"
+]
+
+ACCESS_TOKEN = os.environ[
+    "CTRADER_ACCESS_TOKEN"
+]
+
+REFRESH_TOKEN = os.environ[
+    "CTRADER_REFRESH_TOKEN"
+]
+
+TOKEN_EXPIRES_AT = int(
+    os.environ.get(
+        "CTRADER_TOKEN_EXPIRES_AT",
+        "0",
+    )
+)
+
+GITHUB_PAT = os.environ.get(
+    "GITHUB_PAT",
+    "",
+)
+
 GITHUB_OWNER = os.environ.get(
     "GITHUB_OWNER",
     "chsher1421-star",
 )
+
 GITHUB_REPO = os.environ.get(
     "GITHUB_REPO",
     "Gold-signals",
 )
 
 # Refresh one week before expiry.
-REFRESH_BUFFER_SECONDS = 7 * 24 * 60 * 60
+REFRESH_BUFFER_SECONDS = (
+    7 * 24 * 60 * 60
+)
 
 
 TF_MINUTES = {
@@ -78,7 +115,9 @@ TF_MINUTES = {
 }
 
 
-_ALL_CANDLES: dict[str, list[dict[str, Any]]] | None = None
+_ALL_CANDLES: (
+    dict[str, list[dict[str, Any]]] | None
+) = None
 
 
 # ============================================================
@@ -87,19 +126,26 @@ _ALL_CANDLES: dict[str, list[dict[str, Any]]] | None = None
 
 def _token_needs_refresh() -> bool:
     """
-    Return True when the access token is expired, near expiry,
-    or when no expiry timestamp has been configured.
+    Return True when the access token is expired,
+    near expiry, or when no expiry timestamp exists.
     """
     if TOKEN_EXPIRES_AT <= 0:
         return True
 
     return (
         int(time.time())
-        >= TOKEN_EXPIRES_AT - REFRESH_BUFFER_SECONDS
+        >= (
+            TOKEN_EXPIRES_AT
+            - REFRESH_BUFFER_SECONDS
+        )
     )
 
 
-def _refresh_access_token() -> tuple[str, str, int]:
+def _refresh_access_token() -> tuple[
+    str,
+    str,
+    int,
+]:
     """
     Refresh the cTrader access token.
 
@@ -108,7 +154,9 @@ def _refresh_access_token() -> tuple[str, str, int]:
         new_refresh_token,
         new_expiry_unix_timestamp
     """
-    url = "https://openapi.ctrader.com/apps/token"
+    url = (
+        "https://openapi.ctrader.com/apps/token"
+    )
 
     params = {
         "grant_type": "refresh_token",
@@ -136,17 +184,19 @@ def _refresh_access_token() -> tuple[str, str, int]:
 
     if "accessToken" not in data:
         raise RuntimeError(
-            "cTrader token refresh response did not contain "
-            "accessToken."
+            "cTrader token refresh response "
+            "did not contain accessToken."
         )
 
     if "refreshToken" not in data:
         raise RuntimeError(
-            "cTrader token refresh response did not contain "
-            "refreshToken."
+            "cTrader token refresh response "
+            "did not contain refreshToken."
         )
 
-    expires_in = int(data["expiresIn"])
+    expires_in = int(
+        data["expiresIn"]
+    )
 
     return (
         data["accessToken"],
@@ -160,8 +210,8 @@ def _update_github_secret(
     value: str,
 ) -> None:
     """
-    Update one repository Actions secret using the repository's
-    public key and a fine-grained GitHub PAT.
+    Update one repository Actions secret using
+    the repository public key.
     """
     if not GITHUB_PAT:
         raise RuntimeError(
@@ -170,15 +220,22 @@ def _update_github_secret(
         )
 
     headers = {
-        "Accept": "application/vnd.github+json",
-        "Authorization": f"Bearer {GITHUB_PAT}",
-        "X-GitHub-Api-Version": "2022-11-28",
+        "Accept": (
+            "application/vnd.github+json"
+        ),
+        "Authorization": (
+            f"Bearer {GITHUB_PAT}"
+        ),
+        "X-GitHub-Api-Version": (
+            "2022-11-28"
+        ),
     }
 
     public_key_url = (
         f"https://api.github.com/repos/"
-        f"{GITHUB_OWNER}/{GITHUB_REPO}"
-        "/actions/secrets/public-key"
+        f"{GITHUB_OWNER}/"
+        f"{GITHUB_REPO}/"
+        "actions/secrets/public-key"
     )
 
     key_response = requests.get(
@@ -192,26 +249,33 @@ def _update_github_secret(
     key_data = key_response.json()
 
     repo_public_key = public.PublicKey(
-        base64.b64decode(key_data["key"]),
+        base64.b64decode(
+            key_data["key"]
+        ),
         encoding.RawEncoder(),
     )
 
-    encrypted_value = public.SealedBox(
-        repo_public_key
-    ).encrypt(
-        value.encode("utf-8")
+    encrypted_value = (
+        public.SealedBox(
+            repo_public_key
+        ).encrypt(
+            value.encode("utf-8")
+        )
     )
 
     secret_url = (
         f"https://api.github.com/repos/"
-        f"{GITHUB_OWNER}/{GITHUB_REPO}"
-        f"/actions/secrets/{name}"
+        f"{GITHUB_OWNER}/"
+        f"{GITHUB_REPO}/"
+        f"actions/secrets/{name}"
     )
 
     payload = {
-        "encrypted_value": base64.b64encode(
-            encrypted_value
-        ).decode("utf-8"),
+        "encrypted_value": (
+            base64.b64encode(
+                encrypted_value
+            ).decode("utf-8")
+        ),
         "key_id": key_data["key_id"],
     }
 
@@ -227,8 +291,8 @@ def _update_github_secret(
 
 def _maybe_refresh_token() -> None:
     """
-    Refresh the cTrader token when required and update the
-    GitHub repository secrets.
+    Refresh the cTrader token when required and
+    update the GitHub repository secrets.
     """
     global ACCESS_TOKEN
     global REFRESH_TOKEN
@@ -265,7 +329,9 @@ def _maybe_refresh_token() -> None:
 
     ACCESS_TOKEN = new_access
     REFRESH_TOKEN = new_refresh
-    TOKEN_EXPIRES_AT = new_expires_at
+    TOKEN_EXPIRES_AT = (
+        new_expires_at
+    )
 
     print(
         "cTrader token refreshed successfully; "
@@ -282,10 +348,12 @@ def _response_or_error(
     request_name: str,
 ):
     """
-    Convert the Twisted/cTrader wrapper into the underlying
-    protobuf response and surface cTrader API errors clearly.
+    Extract the underlying protobuf response and
+    surface cTrader API errors clearly.
     """
-    response = Protobuf.extract(message)
+    response = Protobuf.extract(
+        message
+    )
 
     error_code = getattr(
         response,
@@ -318,10 +386,12 @@ def _completed_candles(
     tf_minutes: int,
 ):
     """
-    Convert cTrader trendbars into the dictionary format used
-    by the existing VSA engine.
+    Convert cTrader trendbars into the dictionary
+    format used by the existing VSA engine.
     """
-    candles: list[dict[str, Any]] = []
+    candles: list[
+        dict[str, Any]
+    ] = []
 
     for bar in trendbars:
         low = int(bar.low)
@@ -339,16 +409,21 @@ def _completed_candles(
         )
 
         timestamp = (
-            int(bar.utcTimestampInMinutes) * 60
+            int(
+                bar.utcTimestampInMinutes
+            )
+            * 60
         )
 
         candles.append(
             {
-                "time": datetime.fromtimestamp(
-                    timestamp,
-                    tz=timezone.utc,
-                ).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
+                "time": (
+                    datetime.fromtimestamp(
+                        timestamp,
+                        tz=timezone.utc,
+                    ).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    )
                 ),
                 "open": round(
                     open_raw / 100000.0,
@@ -366,7 +441,9 @@ def _completed_candles(
                     close_raw / 100000.0,
                     digits,
                 ),
-                "volume": int(bar.volume),
+                "volume": int(
+                    bar.volume
+                ),
             }
         )
 
@@ -376,10 +453,12 @@ def _completed_candles(
 
     # Remove the currently-forming candle.
     if candles:
-        latest_dt = datetime.fromisoformat(
-            candles[-1]["time"].replace(
-                "Z",
-                "+00:00",
+        latest_dt = (
+            datetime.fromisoformat(
+                candles[-1]["time"].replace(
+                    "Z",
+                    "+00:00",
+                )
             )
         )
 
@@ -387,13 +466,19 @@ def _completed_candles(
             latest_dt.timestamp()
         )
 
-        interval = tf_minutes * 60
+        interval = (
+            tf_minutes * 60
+        )
 
         current_bucket = (
-            int(time.time()) // interval
+            int(time.time())
+            // interval
         ) * interval
 
-        if latest_epoch >= current_bucket:
+        if (
+            latest_epoch
+            >= current_bucket
+        ):
             candles.pop()
 
     return candles
@@ -431,7 +516,10 @@ def _fetch_all_timeframes():
         TcpProtocol,
     )
 
-    result_box: dict[str, Any] = {}
+    result_box: dict[
+        str,
+        Any,
+    ] = {}
 
     errors: list[str] = []
 
@@ -439,7 +527,10 @@ def _fetch_all_timeframes():
         TF_MINUTES.keys()
     )
 
-    symbol_info: dict[str, Any] = {}
+    symbol_info: dict[
+        str,
+        Any,
+    ] = {}
 
     # --------------------------------------------------------
     # ERROR / STOP HELPERS
@@ -448,7 +539,9 @@ def _fetch_all_timeframes():
     def stop_with_error(
         message: str,
     ):
-        errors.append(message)
+        errors.append(
+            message
+        )
 
         if reactor.running:
             reactor.stop()
@@ -462,18 +555,24 @@ def _fetch_all_timeframes():
         callback,
         request_name: str,
     ):
-        deferred = client.send(request)
+        deferred = client.send(
+            request
+        )
 
         def handle_response(
             message,
         ):
             try:
-                response = _response_or_error(
-                    message,
-                    request_name,
+                response = (
+                    _response_or_error(
+                        message,
+                        request_name,
+                    )
                 )
 
-                return callback(response)
+                return callback(
+                    response
+                )
 
             except Exception as exc:
                 stop_with_error(
@@ -542,7 +641,9 @@ def _fetch_all_timeframes():
 
         candles = _completed_candles(
             trendbars,
-            symbol_info["digits"],
+            symbol_info[
+                "digits"
+            ],
             TF_MINUTES[tf],
         )
 
@@ -562,7 +663,9 @@ def _fetch_all_timeframes():
             f"latest={candles[-1]['time']}"
         )
 
-        pending.discard(tf)
+        pending.discard(
+            tf
+        )
 
         finish_if_done()
 
@@ -607,7 +710,10 @@ def _fetch_all_timeframes():
                         tf,
                         response,
                     ),
-                f"ProtoOAGetTrendbarsReq[{tf}]",
+                (
+                    "ProtoOAGetTrendbarsReq"
+                    f"[{tf}]"
+                ),
             )
 
     # --------------------------------------------------------
@@ -636,10 +742,15 @@ def _fetch_all_timeframes():
             symbol.digits
         )
 
+        # IMPORTANT:
+        # ProtoOASymbol returned by
+        # ProtoOASymbolByIdReq does not
+        # expose symbolName.
         print(
-            f"Symbol details received: "
-            f"{symbol.symbolName}; "
-            f"digits={symbol_info['digits']}"
+            f"Symbol details received for "
+            f"{SYMBOL_NAME}; "
+            f"digits="
+            f"{symbol_info['digits']}"
         )
 
         request_trendbars()
@@ -687,7 +798,10 @@ def _fetch_all_timeframes():
         wanted = (
             SYMBOL_NAME
             .upper()
-            .replace("/", "")
+            .replace(
+                "/",
+                "",
+            )
         )
 
         matches = []
@@ -696,11 +810,19 @@ def _fetch_all_timeframes():
             symbol_name = (
                 symbol.symbolName
                 .upper()
-                .replace("/", "")
+                .replace(
+                    "/",
+                    "",
+                )
             )
 
-            if symbol_name == wanted:
-                matches.append(symbol)
+            if (
+                symbol_name
+                == wanted
+            ):
+                matches.append(
+                    symbol
+                )
 
         # Fallback to symbols containing XAUUSD.
         if not matches:
@@ -708,11 +830,19 @@ def _fetch_all_timeframes():
                 symbol_name = (
                     symbol.symbolName
                     .upper()
-                    .replace("/", "")
+                    .replace(
+                        "/",
+                        "",
+                    )
                 )
 
-                if "XAUUSD" in symbol_name:
-                    matches.append(symbol)
+                if (
+                    "XAUUSD"
+                    in symbol_name
+                ):
+                    matches.append(
+                        symbol
+                    )
 
         if not matches:
             names = [
@@ -729,7 +859,9 @@ def _fetch_all_timeframes():
 
         selected = matches[0]
 
-        symbol_info["symbol_id"] = int(
+        symbol_info[
+            "symbol_id"
+        ] = int(
             selected.symbolId
         )
 
@@ -741,7 +873,9 @@ def _fetch_all_timeframes():
         )
 
         request_symbol_details(
-            symbol_info["symbol_id"]
+            symbol_info[
+                "symbol_id"
+            ]
         )
 
     # --------------------------------------------------------
@@ -855,7 +989,10 @@ def _fetch_all_timeframes():
         send(
             request,
             after_account_list,
-            "ProtoOAGetAccountListByAccessTokenReq",
+            (
+                "ProtoOAGetAccountListBy"
+                "AccessTokenReq"
+            ),
         )
 
     # --------------------------------------------------------
@@ -967,6 +1104,7 @@ def get_candles(
 
     if _ALL_CANDLES is None:
         _maybe_refresh_token()
+
         _ALL_CANDLES = (
             _fetch_all_timeframes()
         )
