@@ -230,11 +230,11 @@ def _fetch_all_timeframes() -> dict[str, list[dict[str, Any]]]:
             reactor.stop()
 
     def send(request, callback):
-    deferred = client.send(request)
+        deferred = client.send(request)
 
-    def handle_response(message):
-        response = Protobuf.extract(message)
-        return callback(response)
+        def handle_response(message):
+            response = Protobuf.extract(message)
+            return callback(response)
 
     deferred.addCallback(handle_response)
     deferred.addErrback(fail)
