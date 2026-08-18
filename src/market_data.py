@@ -674,62 +674,62 @@ def _fetch_all_timeframes():
     # --------------------------------------------------------
 
     def request_trendbars():
-    """
-    Request completed trendbars for every configured timeframe.
-
-    cTrader requires both fromTimestamp and toTimestamp
-    in ProtoOAGetTrendbarsReq.
-    """
-    now_ms = int(
-        time.time() * 1000
-    )
-
-    for tf, tf_minutes in TF_MINUTES.items():
-        request = (
-            ProtoOAGetTrendbarsReq()
+        """
+        Request completed trendbars for every configured timeframe.
+    
+        cTrader requires both fromTimestamp and toTimestamp
+        in ProtoOAGetTrendbarsReq.
+        """
+        now_ms = int(
+            time.time() * 1000
         )
-
-        request.ctidTraderAccountId = (
-            ACCOUNT_ID
-        )
-
-        request.symbolId = (
-            symbol_info["symbol_id"]
-        )
-
-        request.period = (
-            ProtoOATrendbarPeriod.Value(
-                tf
+    
+        for tf, tf_minutes in TF_MINUTES.items():
+            request = (
+                ProtoOAGetTrendbarsReq()
             )
-        )
-
-        request.count = 60
-
-        history_minutes = (
-            (request.count + 5)
-            * tf_minutes
-        )
-
-        request.fromTimestamp = (
-            now_ms
-            - (
-                history_minutes
-                * 60
-                * 1000
+    
+            request.ctidTraderAccountId = (
+                ACCOUNT_ID
             )
-        )
-
-        request.toTimestamp = now_ms
-
-        send(
-            request,
-            lambda response, tf=tf:
-                after_trendbars(
-                    tf,
-                    response,
-                ),
-            f"ProtoOAGetTrendbarsReq[{tf}]",
-        )
+    
+            request.symbolId = (
+                symbol_info["symbol_id"]
+            )
+    
+            request.period = (
+                ProtoOATrendbarPeriod.Value(
+                    tf
+                )
+            )
+    
+            request.count = 60
+    
+            history_minutes = (
+                (request.count + 5)
+                * tf_minutes
+            )
+    
+            request.fromTimestamp = (
+                now_ms
+                - (
+                    history_minutes
+                    * 60
+                    * 1000
+                )
+            )
+    
+            request.toTimestamp = now_ms
+    
+            send(
+                request,
+                lambda response, tf=tf:
+                    after_trendbars(
+                        tf,
+                        response,
+                    ),
+                f"ProtoOAGetTrendbarsReq[{tf}]",
+            )
 
     def after_symbol_details(
         response,
