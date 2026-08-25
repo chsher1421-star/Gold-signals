@@ -30,6 +30,9 @@ from market_data import get_candles
 from vsa_signals import (
     check_cab,
     check_no_demand_no_supply,
+    check_spring,
+    check_upthrust,
+    check_test,
 )
 from chart_gen import generate_chart
 from notifier import notify
@@ -271,7 +274,7 @@ def process_timeframe(
 
         return errors
 
-    if len(candles) < 20:
+    if len(candles) < 25:
         message = (
             f"[{granularity}] not enough "
             f"completed candle history: "
@@ -294,6 +297,18 @@ def process_timeframe(
     if do_cab:
         found.extend(
             check_cab(candles)
+        )
+
+        found.extend(
+            check_spring(candles)
+        )
+
+        found.extend(
+            check_upthrust(candles)
+        )
+
+        found.extend(
+            check_test(candles)
         )
 
     if do_ndns:
