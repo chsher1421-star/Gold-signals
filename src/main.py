@@ -102,6 +102,38 @@ def get_pkt_now() -> datetime:
     )
 
 
+def is_market_closed(
+    now_pkt: datetime,
+) -> bool:
+    """
+    Gold/Forex CFD markets close roughly
+    Friday ~9-10 PM UTC (~Saturday 2-3 AM PKT)
+    and reopen Sunday ~9-10 PM UTC
+    (~Monday 2-3 AM PKT).
+
+    In PKT terms that means: all of Saturday,
+    all of Sunday, and early Monday morning
+    (before ~3 AM) are closed.
+
+    weekday(): Monday=0 ... Saturday=5, Sunday=6
+    """
+    weekday = now_pkt.weekday()
+
+    if weekday == 5:
+        # Saturday - closed all day
+        return True
+
+    if weekday == 6:
+        # Sunday - closed all day
+        return True
+
+    if weekday == 0 and now_pkt.hour < 3:
+        # Early Monday before reopen
+        return True
+
+    return False
+
+
 def ensure_daily_stats(
     state: dict,
 ) -> dict:
@@ -447,6 +479,25 @@ def process_timeframe(
 
 def main() -> None:
     state = load_state()
+
+    now_pkt = get_pkt_now()
+
+    if is_market_closed(now_pkt):
+        print(
+            "Market is closed "
+            "(weekend) - skipping "
+            "candle checks."
+        )
+
+        maybe_send_daily_summary(
+            state
+        )
+
+        save_state(
+            state
+        )
+
+        return
 
     record_check(
         state
