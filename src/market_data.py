@@ -1066,10 +1066,10 @@ def _fetch_all_timeframes():
     client.startService()
 
     reactor.callLater(
-        60,
+        120,
         lambda: stop_with_error(
             "cTrader request timed out "
-            "after 60 seconds."
+            "after 120 seconds."
         ),
     )
 
