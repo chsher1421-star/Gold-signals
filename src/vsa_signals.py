@@ -117,6 +117,41 @@ def check_no_demand_no_supply(candles):
     return signals
 
 
+def candle_diagnostics(candles):
+    """
+    candles: list of completed candles, oldest -> newest.
+    Returns diagnostic numbers for the LAST candle in the list (volume vs
+    10/15-bar average, spread vs average range, close position) - used for
+    verbose per-run logging so every candle's numbers are visible even when
+    no signal fires, making it possible to check a "missed" signal later
+    without needing to re-derive it from a chart screenshot.
+    """
+    if len(candles) < 2:
+        return {}
+
+    current = candles[-1]
+    history_before_current = candles[:-1]
+
+    avg_vol_10 = _avg_volume(history_before_current, 10)
+    avg_vol_15 = _avg_volume(history_before_current, 15)
+    ref_range_10 = _avg_range(history_before_current, 10)
+    ref_range_15 = _avg_range(history_before_current, 15)
+    ref_range = (ref_range_10 + ref_range_15) / 2
+    spread = _spread(current)
+    spread_label = "wide" if spread > ref_range else "narrow"
+
+    return {
+        "time": current["time"],
+        "volume": current["volume"],
+        "avg_vol_10": avg_vol_10,
+        "avg_vol_15": avg_vol_15,
+        "spread": spread,
+        "ref_range": ref_range,
+        "spread_label": spread_label,
+        "close_pos": _close_position(current),
+    }
+
+
 def check_cab(candles):
     """
     candles: list of completed candles, oldest -> newest.
