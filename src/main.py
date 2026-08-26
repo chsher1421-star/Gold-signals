@@ -33,7 +33,76 @@ from vsa_signals import (
     check_spring,
     check_upthrust,
     check_test,
+    candle_diagnostics,
 )
+
+
+def _last_n_slices(candles, n=3):
+    """
+    Returns up to n progressively-larger prefixes of `candles`, each one
+    ending at one of the last n candles - oldest of the three first, the
+    true latest candle last. Feeding each slice into a check_*() function
+    makes it evaluate that slice's last candle "as if" it were the newest
+    completed candle, using only the history available up to that point.
+    """
+    slices = []
+    total = len(candles)
+
+    for offset in range(n, 0, -1):
+        idx = total - offset
+
+        if idx < 0:
+            continue
+
+        slices.append(
+            candles[: idx + 1]
+        )
+
+    return slices
+
+
+def check_last_n(check_fn, candles, n=3):
+    """
+    Runs check_fn against each of the last n candles (not just the very
+    latest one). This is a safety net: if a prior run timed out or failed
+    and never evaluated a candle while it was "the latest", this run will
+    still catch it. Duplicate notifications are prevented separately by
+    already_alerted()/state.json, which key on the candle's own timestamp.
+    """
+    results = []
+
+    for sub in _last_n_slices(candles, n):
+        results.extend(
+            check_fn(sub)
+        )
+
+    return results
+
+
+def log_diagnostics(granularity, candles, n=3):
+    """
+    Prints volume/spread numbers for the last n candles on every run,
+    whether or not a signal fired, so a "why didn't this trigger" question
+    can be answered directly from the workflow log instead of needing a
+    chart screenshot.
+    """
+    for sub in _last_n_slices(candles, n):
+        diag = candle_diagnostics(sub)
+
+        if not diag:
+            continue
+
+        print(
+            f"[{granularity}] diag "
+            f"{diag['time']}: "
+            f"vol={diag['volume']} "
+            f"(avg10={diag['avg_vol_10']:.0f}, "
+            f"avg15={diag['avg_vol_15']:.0f}) | "
+            f"spread={diag['spread']:.2f} "
+            f"(avg_ref={diag['ref_range']:.2f}, "
+            f"{diag['spread_label']}) | "
+            f"close_pos={diag['close_pos']:.2f}"
+        )
 from chart_gen import generate_chart
 from notifier import notify
 from state_manager import (
@@ -295,26 +364,44 @@ def process_timeframe(
     found = []
 
     if do_cab:
-        found.extend(
-            check_cab(candles)
+        log_diagnostics(
+            granularity,
+            candles,
         )
 
         found.extend(
-            check_spring(candles)
+            check_last_n(
+                check_cab,
+                candles,
+            )
         )
 
         found.extend(
-            check_upthrust(candles)
+            check_last_n(
+                check_spring,
+                candles,
+            )
         )
 
         found.extend(
-            check_test(candles)
+            check_last_n(
+                check_upthrust,
+                candles,
+            )
+        )
+
+        found.extend(
+            check_last_n(
+                check_test,
+                candles,
+            )
         )
 
     if do_ndns:
         found.extend(
-            check_no_demand_no_supply(
-                candles
+            check_last_n(
+                check_no_demand_no_supply,
+                candles,
             )
         )
 
