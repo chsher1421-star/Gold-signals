@@ -42,7 +42,7 @@ Test (bullish confirmation, checked on M3, M5, M15, H1, H4):
 
 REF_RANGE_WINDOW = 10          # bars used to compute "average spread" reference for No Demand/No Supply
 SPREAD_SLACK = 1.1             # small/average threshold = up to 10% above the average range (used by No Demand/No Supply)
-CAB_VOLUME_MULT = 1.5          # CAB volume must exceed this multiple of the average for a WIDE-spread bar
+CAB_VOLUME_MULT = 1.4          # CAB volume must exceed this multiple of the average for a WIDE-spread bar
 CAB_VOLUME_MULT_NARROW = 2.0   # CAB volume must exceed this multiple of the average for a NARROW-spread bar
 SPRING_LOOKBACK = 20           # bars used to define a "new low/high" for Spring/Upthrust/Test
 SPRING_VOLUME_MULT = 1.5       # Spring/Upthrust volume must exceed this multiple of the average
