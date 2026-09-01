@@ -11,14 +11,19 @@ No Demand / No Supply (checked only on the timeframes passed to it, e.g. H4):
     explicit instruction) - both are reported together as one combined signal.
 
 CAB (checked on M3, M5, M15, H1, H4):
-  - volume > 1.5x average volume of previous 10 bars, AND/OR > 1.5x average of
-    previous 15 bars, for a WIDE-spread bar.
-  - For a NARROW-spread bar, volume must clear a higher bar (2x average) since
-    the volume alone has to "compensate" for the lack of range - a narrow-spread
-    climactic bar is real but needs more extreme volume to qualify.
-  - spread is compared against both the 10-bar and 15-bar average range and
-    labeled wide/narrow - this label decides WHICH multiplier applies, but both
-    wide and narrow bars can trigger a CAB, neither is excluded outright.
+  - Volume is measured against SMA(volume, 14) of the previous 14 bars - same
+    baseline as the "Relative Volume [ND]" Pine Script indicator (by Sajid
+    Khan Ghori) that Jerry uses on TradingView, so the alert and the chart
+    indicator always agree on the same number.
+  - Tiers (same multiples as that indicator's bands): 1.9x = "high",
+    2.2x = "very high", 3.5x = "ultra high".
+  - A CAB signal ONLY fires on "very high" (>= 2.2x) or "ultra high"
+    (>= 3.5x) volume. "high" (1.9x-2.2x) and below does NOT fire - this is a
+    deliberate tightening per Jerry's instruction, replacing the old
+    1.4x/2.0x wide/narrow-spread thresholds.
+  - spread wide/narrow label is still recorded for information in the alert
+    detail line, but it no longer decides the volume threshold - only the
+    SMA(14) ratio does.
   - close position is irrelevant
 
 Spring (bullish reversal, checked on M3, M5, M15, H1, H4):
@@ -42,8 +47,15 @@ Test (bullish confirmation, checked on M3, M5, M15, H1, H4):
 
 REF_RANGE_WINDOW = 10          # bars used to compute "average spread" reference for No Demand/No Supply
 SPREAD_SLACK = 1.1             # small/average threshold = up to 10% above the average range (used by No Demand/No Supply)
-CAB_VOLUME_MULT = 1.4          # CAB volume must exceed this multiple of the average for a WIDE-spread bar
-CAB_VOLUME_MULT_NARROW = 2.0   # CAB volume must exceed this multiple of the average for a NARROW-spread bar
+
+# CAB volume tiers - matched to the "Relative Volume [ND]" Pine Script
+# indicator (SMA(volume,14) baseline, bands at 1.9x/2.2x/3.5x). Only
+# "very high" and "ultra high" fire a CAB signal; "high" (1.9x-2.2x) does not.
+CAB_SMA_WINDOW = 14
+CAB_HIGH_MULT = 1.9            # indicator's middle band - informational only, does NOT fire a CAB
+CAB_VERY_HIGH_MULT = 2.2       # indicator's high band - fires CAB, labeled "very high"
+CAB_ULTRA_HIGH_MULT = 3.5      # indicator's highest band - fires CAB, labeled "ultra high"
+
 SPRING_LOOKBACK = 20           # bars used to define a "new low/high" for Spring/Upthrust/Test
 SPRING_VOLUME_MULT = 1.5       # Spring/Upthrust volume must exceed this multiple of the average
 CLOSE_UPPER_THIRD = 0.66       # close position (0-1 within the bar's range) counted as "closing strong"
@@ -66,6 +78,27 @@ def _avg_volume(candles, n):
     if not window:
         return 0.0
     return sum(c["volume"] for c in window) / len(window)
+
+
+def _volume_tier(current_volume, sma14):
+    """
+    Returns (ratio, tier) where tier is one of:
+    "ultra high" (>= 3.5x), "very high" (>= 2.2x), "high" (>= 1.9x), or None
+    (below the "high" band - not climactic at all).
+    Mirrors the "Relative Volume [ND]" Pine Script indicator's bands exactly.
+    """
+    if sma14 <= 0:
+        return 0.0, None
+
+    ratio = current_volume / sma14
+
+    if ratio >= CAB_ULTRA_HIGH_MULT:
+        return ratio, "ultra high"
+    if ratio >= CAB_VERY_HIGH_MULT:
+        return ratio, "very high"
+    if ratio >= CAB_HIGH_MULT:
+        return ratio, "high"
+    return ratio, None
 
 
 def _close_position(candle):
@@ -140,6 +173,9 @@ def candle_diagnostics(candles):
     spread = _spread(current)
     spread_label = "wide" if spread > ref_range else "narrow"
 
+    sma_vol_14 = _avg_volume(history_before_current, CAB_SMA_WINDOW)
+    vol_ratio_14, vol_tier = _volume_tier(current["volume"], sma_vol_14)
+
     return {
         "time": current["time"],
         "volume": current["volume"],
@@ -149,6 +185,9 @@ def candle_diagnostics(candles):
         "ref_range": ref_range,
         "spread_label": spread_label,
         "close_pos": _close_position(current),
+        "sma_vol_14": sma_vol_14,
+        "vol_ratio_14": vol_ratio_14,
+        "vol_tier": vol_tier or "below high",
     }
 
 
@@ -156,45 +195,39 @@ def check_cab(candles):
     """
     candles: list of completed candles, oldest -> newest.
     Evaluates only the LAST candle in the list.
-    Returns a list with 0 or 1 signal dicts (may report both 10-bar and 15-bar
-    windows together if both trigger).
+    Volume is measured against SMA(volume, 14) - same baseline as the
+    "Relative Volume [ND]" Pine Script indicator. Only fires when the
+    current bar's volume reaches the "very high" (>= 2.2x) or "ultra high"
+    (>= 3.5x) band; "high" (1.9x-2.2x) and below no longer fire a CAB.
+    Returns a list with 0 or 1 signal dicts.
     """
     signals = []
-    if len(candles) < 16:
+    if len(candles) < CAB_SMA_WINDOW + 1:
         return signals
 
     current = candles[-1]
     history_before_current = candles[:-1]
 
-    avg_vol_10 = _avg_volume(history_before_current, 10)
-    avg_vol_15 = _avg_volume(history_before_current, 15)
+    sma_vol_14 = _avg_volume(history_before_current, CAB_SMA_WINDOW)
+    ratio, tier = _volume_tier(current["volume"], sma_vol_14)
+
+    # spread label kept only as information in the alert detail - it no
+    # longer decides the threshold.
     ref_range_10 = _avg_range(history_before_current, 10)
     ref_range_15 = _avg_range(history_before_current, 15)
-    spread = _spread(current)
-    # Use the average of the two reference windows to label wide/narrow.
     ref_range = (ref_range_10 + ref_range_15) / 2
+    spread = _spread(current)
     spread_label = "wide" if spread > ref_range else "narrow"
 
-    # Narrow-spread bars need a higher volume multiple to compensate for the
-    # lack of range before they qualify as climactic.
-    volume_mult = (
-        CAB_VOLUME_MULT if spread_label == "wide" else CAB_VOLUME_MULT_NARROW
-    )
-
-    triggered = []
-    if current["volume"] > avg_vol_10 * volume_mult:
-        triggered.append("10-bar")
-    if current["volume"] > avg_vol_15 * volume_mult:
-        triggered.append("15-bar")
-
-    if triggered:
+    if tier in ("very high", "ultra high"):
         signals.append(
             {
-                "type": f"CAB ({'/'.join(triggered)} vol, {spread_label} spread)",
+                "type": f"CAB ({tier} vol, {spread_label} spread)",
                 "candle": current,
+                "tier": tier,
                 "detail": (
-                    f"vol={current['volume']} (avg10={avg_vol_10:.0f}, "
-                    f"avg15={avg_vol_15:.0f}, threshold={volume_mult}x) | "
+                    f"vol={current['volume']} (sma14={sma_vol_14:.0f}, "
+                    f"ratio={ratio:.2f}x, tier={tier}) | "
                     f"spread={spread:.2f} (avg_ref={ref_range:.2f}, {spread_label})"
                 ),
             }
