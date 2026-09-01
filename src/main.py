@@ -97,7 +97,10 @@ def log_diagnostics(granularity, candles, n=3):
             f"{diag['time']}: "
             f"vol={diag['volume']} "
             f"(avg10={diag['avg_vol_10']:.0f}, "
-            f"avg15={diag['avg_vol_15']:.0f}) | "
+            f"avg15={diag['avg_vol_15']:.0f}, "
+            f"sma14={diag['sma_vol_14']:.0f}, "
+            f"ratio14={diag['vol_ratio_14']:.2f}x, "
+            f"tier={diag['vol_tier']}) | "
             f"spread={diag['spread']:.2f} "
             f"(avg_ref={diag['ref_range']:.2f}, "
             f"{diag['spread_label']}) | "
@@ -504,6 +507,9 @@ def process_timeframe(
                 candle_time,
                 title,
                 chart_path,
+                show_volume_bands=sig_type.startswith(
+                    "CAB"
+                ),
             )
 
         except Exception as exc:
