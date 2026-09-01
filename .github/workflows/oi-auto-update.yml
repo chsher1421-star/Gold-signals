@@ -1,0 +1,36 @@
+name: CME OI Auto Update
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-oi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r oi_automation/requirements.txt
+
+      - name: Run OI updater
+        run: python oi_automation/update_oi.py
+
+      - name: Commit updated workbook (if changed)
+        run: |
+          git config user.name "oi-auto-update-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add oi_automation/OI_Automatic_Update.xlsm
+          git diff --staged --quiet || git commit -m "Auto-update CME Open Interest data"
+          git push
