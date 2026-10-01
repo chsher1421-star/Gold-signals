@@ -90,8 +90,8 @@
   ],
   "daily_stats": {
     "date": "2026-10-01",
-    "checks": 70,
-    "signals": 2,
+    "checks": 71,
+    "signals": 3,
     "summary_sent": false
   },
   "M3:CAB (10-bar/15-bar vol, narrow spread)": [
@@ -1320,5 +1320,8 @@
   ],
   "M5:Spring (10-bar vol)": [
     "2026-09-27T22:00:00Z"
+  ],
+  "M15:Spring (10-bar vol)": [
+    "2026-10-01T00:30:00Z"
   ]
 }
